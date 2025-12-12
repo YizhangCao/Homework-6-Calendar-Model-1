@@ -5,7 +5,6 @@ import model.event.EventBuilder;
 import model.event.RecurrencePattern;
 import model.event.RecurringEvent;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -56,8 +55,21 @@ public interface Calendar {
 
   /**
    * Checks if the user is busy at a specific date and time.
+   *
+   * @param date the date to check
+   * @param time the time to check
+   * @return true if the user has an event at that time, false otherwise
    */
   boolean isBusy(LocalDate date, LocalTime time);
+
+  /**
+   * Checks if the user is free (not busy) at a specific date and time.
+   *
+   * @param date the date to check
+   * @param time the time to check
+   * @return true if the user has no events at that time, false otherwise
+   */
+  boolean isFree(LocalDate date, LocalTime time);
 
   /**
    * Updates an existing event.

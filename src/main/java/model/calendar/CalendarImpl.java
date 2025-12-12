@@ -15,6 +15,7 @@ public class CalendarImpl implements Calendar {
   private final ConflictPolicy conflictPolicy;
   private final List<Event> events;
   private final List<RecurringEvent> recurringEvents;
+  private final List<CalendarListener> listeners;
 
   /**
    * Creates a calendar with the default conflict policy (REJECT_CONFLICTS).
@@ -44,6 +45,7 @@ public class CalendarImpl implements Calendar {
     this.conflictPolicy = conflictPolicy;
     this.events = new ArrayList<>();
     this.recurringEvents = new ArrayList<>();
+    this.listeners = new ArrayList<>();
   }
 
   @Override
@@ -80,7 +82,11 @@ public class CalendarImpl implements Calendar {
       }
     }
 
-    return events.add(event);
+    boolean added = events.add(event);
+    if (added) {
+      announceEventAdded(event);
+    }
+    return added;
   }
 
   /**
@@ -120,6 +126,7 @@ public class CalendarImpl implements Calendar {
     // Replace the event
     int index = events.indexOf(originalEvent);
     events.set(index, updatedEvent);
+    announceEventModified(updatedEvent);
     return true;
   }
 
@@ -241,6 +248,11 @@ public class CalendarImpl implements Calendar {
   }
 
   @Override
+  public boolean isFree(LocalDate date, LocalTime time) {
+    return !isBusy(date, time);
+  }
+
+  @Override
   public RecurringEvent addRecurringEvent(EventBuilder eventBuilder,
       RecurrencePattern pattern,
       LocalDate startDate) {
@@ -276,6 +288,12 @@ public class CalendarImpl implements Calendar {
     }
 
     recurringEvents.add(recurringEvent);
+
+    // Announce each instance as added
+    for (Event instance : recurringEvent.getInstances()) {
+      announceEventAdded(instance);
+    }
+
     return recurringEvent;
   }
 
@@ -301,6 +319,48 @@ public class CalendarImpl implements Calendar {
     }
 
     return csv.toString();
+  }
+
+  /**
+   * Adds a listener to be notified of calendar changes.
+   *
+   * @param listener the listener to add
+   */
+  public void addCalendarListener(CalendarListener listener) {
+    if (listener != null && !listeners.contains(listener)) {
+      listeners.add(listener);
+    }
+  }
+
+  /**
+   * Removes a listener from calendar notifications.
+   *
+   * @param listener the listener to remove
+   */
+  public void removeCalendarListener(CalendarListener listener) {
+    listeners.remove(listener);
+  }
+
+  /**
+   * Notifies all listeners that an event was added.
+   *
+   * @param event the event that was added
+   */
+  protected void announceEventAdded(Event event) {
+    for (CalendarListener listener : new ArrayList<>(listeners)) {
+      listener.onEventAdded(event);
+    }
+  }
+
+  /**
+   * Notifies all listeners that an event was modified.
+   *
+   * @param event the event that was modified
+   */
+  protected void announceEventModified(Event event) {
+    for (CalendarListener listener : new ArrayList<>(listeners)) {
+      listener.onEventModified(event);
+    }
   }
 
   /**
@@ -367,9 +427,9 @@ public class CalendarImpl implements Calendar {
       return false;
     }
 
-    // All-day events make any time on that date busy
+    // All-day events don't conflict with specific times
     if (event.isAllDay()) {
-      return true;
+      return false;  // Changed: all-day events don't make you "busy" at specific times
     }
 
     Optional<LocalTime> startTimeOpt = event.getStartTime();
