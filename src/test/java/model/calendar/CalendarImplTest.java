@@ -195,6 +195,32 @@ class CalendarImplTest {
   }
 
   @Test
+  void testIsFree() {
+    Event event = EventBuilder.create()
+        .withSubject("Busy Time")
+        .withStartDate(testDate)
+        .withStartTime(LocalTime.of(10, 0))
+        .withEndTime(LocalTime.of(12, 0))
+        .build();
+
+    calendar.addEvent(event);
+
+    // isFree should be the opposite of isBusy
+    assertFalse(calendar.isFree(testDate, LocalTime.of(10, 30)));
+    assertFalse(calendar.isFree(testDate, LocalTime.of(11, 59)));
+    assertTrue(calendar.isFree(testDate, LocalTime.of(12, 0)));
+    assertTrue(calendar.isFree(testDate, LocalTime.of(9, 59)));
+  }
+
+  @Test
+  void testIsFreeWithNoEvents() {
+    // When there are no events, the user should always be free
+    assertTrue(calendar.isFree(testDate, LocalTime.of(10, 0)));
+    assertTrue(calendar.isFree(testDate, LocalTime.of(15, 0)));
+    assertTrue(calendar.isFree(testDate, LocalTime.of(23, 59)));
+  }
+
+  @Test
   void testUpdateEvent() {
     Event original = EventBuilder.create()
         .withSubject("Original")
