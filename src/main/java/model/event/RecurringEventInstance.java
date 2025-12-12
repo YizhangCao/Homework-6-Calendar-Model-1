@@ -117,6 +117,10 @@ public class RecurringEventInstance implements Event {
 
   @Override
   public boolean conflictsWith(Event other) {
+    // All-day events do not conflict with timed events
+    if (this.isAllDay() != other.isAllDay()) {
+      return false;
+    }
     return other.getStartDateTime().isBefore(this.getEndDateTime())
         && this.getStartDateTime().isBefore(other.getEndDateTime());
   }

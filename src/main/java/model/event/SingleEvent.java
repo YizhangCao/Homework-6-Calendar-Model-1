@@ -91,14 +91,16 @@ public class SingleEvent implements Event {
   public LocalDateTime getEndDateTime() {
     if (endDate != null && endTime != null) {
       return LocalDateTime.of(endDate, endTime);
-    } else if (endDate != null) {
-      // For multi-day all-day events, end at the end of the end date
-      return DateTimeUtil.getEndOfDay(endDate);
     } else if (startTime != null && endTime != null) {
+      // Start time and end time on same day
       return LocalDateTime.of(startDate, endTime);
     } else if (startTime != null) {
-      // If only start time is provided, assume 1 hour duration
-      return LocalDateTime.of(startDate, startTime.plusHours(1));
+      // Timed event without end time - assume 1 hour duration
+      LocalDate effectiveEndDate = endDate != null ? endDate : startDate;
+      return LocalDateTime.of(effectiveEndDate, startTime.plusHours(1));
+    } else if (endDate != null) {
+      // All-day event spanning multiple days
+      return DateTimeUtil.getEndOfDay(endDate);
     } else {
       // All-day event on single day
       return DateTimeUtil.getEndOfDay(startDate);
@@ -107,9 +109,13 @@ public class SingleEvent implements Event {
 
   @Override
   public boolean conflictsWith(Event other) {
-    // Special handling for all-day events
+    // All-day events do not conflict with timed events
+    if (this.isAllDay() != other.isAllDay()) {
+      return false;
+    }
+
+    // Both are all-day events - check if dates overlap
     if (this.isAllDay() && other.isAllDay()) {
-      // Both are all-day events - check if dates overlap
       LocalDate thisEnd = this.endDate != null ? this.endDate : this.startDate;
       LocalDate otherEnd = other.getEndDate().orElse(other.getStartDate());
 
@@ -117,7 +123,7 @@ public class SingleEvent implements Event {
       return !this.startDate.isAfter(otherEnd) && !thisEnd.isBefore(other.getStartDate());
     }
 
-    // For timed events or mixed (all-day vs timed), use datetime comparison
+    // Both are timed events - use datetime comparison
     return DateTimeUtil.overlaps(
         this.getStartDateTime(),
         this.getEndDateTime(),
